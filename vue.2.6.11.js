@@ -391,15 +391,16 @@
     }
   }
 
-  var SSR_ATTR = 'data-server-rendered';
+  // 定义常量和配置
+  var SSR_ATTR = 'data-server-rendered'; // 服务端渲染
 
-  var ASSET_TYPES = [
+  var ASSET_TYPES = [ // 全局函数component,directive,filter 组件、指令、过滤器
     'component',
     'directive',
     'filter'
   ];
 
-  var LIFECYCLE_HOOKS = [
+  var LIFECYCLE_HOOKS = [ // 生命周期函数名
     'beforeCreate',
     'created',
     'beforeMount',
@@ -418,50 +419,59 @@
 
 
 
-  var config = ({
+  var config = ({ // 全局配置
     /**
      * Option merge strategies (used in core/util/options)
+     * 自定义合并策略的选项,用于core，util，options
      */
     // $flow-disable-line
     optionMergeStrategies: Object.create(null),
 
     /**
      * Whether to suppress warnings.
+     * 是否关闭警告，默认为false,如果设置true，那么将不会有各种报错
      */
     silent: false,
 
     /**
      * Show production mode tip message on boot?
+     * 开发模式下是否在控制台显示生产提示，即一条You are running Vue in development mode提示，设置false,即可关闭该提示
      */
     productionTip: "development" !== 'production',
 
     /**
      * Whether to enable devtools
+     * 是否允许vue-devtools(Vue调试神器)检查代码，浏览器环境下为true
      */
     devtools: "development" !== 'production',
 
     /**
      * Whether to record perf
+     * 是否开启性能追踪，只有在开发模式和支持 performance.mark API 的浏览器上才有效
      */
     performance: false,
 
     /**
      * Error handler for watcher errors
+     * 指定组件的渲染和观察期间未捕获错误的处理函数。这个处理函数被调用时，可获取错误信息和 Vue 实例
      */
     errorHandler: null,
 
     /**
      * Warn handler for watcher warns
+     * Vue 的运行时警告赋予一个自定义处理函数。注意这只会在开发者环境下生效，在生产环境下它会被忽略
      */
     warnHandler: null,
 
     /**
      * Ignore certain custom elements
+     * 忽略某些自定义元素
      */
     ignoredElements: [],
 
     /**
      * Custom user key aliases for v-on
+     * 给v-on 自定义键位别名。
      */
     // $flow-disable-line
     keyCodes: Object.create(null),
@@ -469,45 +479,54 @@
     /**
      * Check if a tag is reserved so that it cannot be registered as a
      * component. This is platform-dependent and may be overwritten.
+     * 检查保留标签，如有，则这些标签不能注册成为组件
      */
     isReservedTag: no,
 
     /**
      * Check if an attribute is reserved so that it cannot be used as a component
      * prop. This is platform-dependent and may be overwritten.
+     * 检查保留属性，如果是的话则不能作为组件的参数
      */
     isReservedAttr: no,
 
     /**
      * Check if a tag is an unknown element.
      * Platform-dependent.
+     * 检查是否为未知元素
      */
     isUnknownElement: no,
 
     /**
      * Get the namespace of an element
+     * 获取元素的命名空间
      */
     getTagNamespace: noop,
 
     /**
      * Parse the real tag name for the specific platform.
+     * 解析特定平台的真实标签名称
      */
     parsePlatformTagName: identity,
 
     /**
      * Check if an attribute must be bound using property, e.g. value
      * Platform-dependent.
+     * 检查属性是否必须使用属性进行绑定 比如value
      */
     mustUseProp: no,
 
     /**
      * Perform updates asynchronously. Intended to be used by Vue Test Utils
      * This will significantly reduce performance if set to false.
+     * 异步执行更新，由Vue Test Utils使用
+     * 如果设置为false，这将大大降低性能。
      */
     async: true,
 
     /**
      * Exposed for legacy reasons
+     * 因遗留原因暴露
      */
     _lifecycleHooks: LIFECYCLE_HOOKS
   });
@@ -518,24 +537,33 @@
    * unicode letters used for parsing html tags, component names and property paths.
    * using https://www.w3.org/TR/html53/semantics-scripting.html#potentialcustomelementname
    * skipping \u10000-\uEFFFF due to it freezing up PhantomJS
+   * 用于解析html标签，组件名，属性path的unicode字母
+   * 跳过了\u10000-\uEFFFF 因为它冻结了PhantomJS
    */
   var unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD/;
 
   /**
    * Check if a string starts with $ or _
+   * 检查变量的开头是 $ 或 _
    */
   function isReserved (str) {
-    var c = (str + '').charCodeAt(0);
+    var c = (str + '').charCodeAt(0); // 方法返回0到65535之间的整数
     return c === 0x24 || c === 0x5F
   }
 
   /**
    * Define a property.
+   * 再一个对象上定义一个属性的构造函数
    */
   function def (obj, key, val, enumerable) {
+    // Object.defineProperty(obj, prop, descriptor) 方法会直接在一个对象上定义一个新属性，或者修改一个对象的现有属性， 并返回这个对象
+    // obj要在其上定义属性的对象。
+    // prop要定义或修改的属性的名称。
+    // descriptor将被定义或修改的属性描述符。
+
     Object.defineProperty(obj, key, {
       value: val,
-      enumerable: !!enumerable,
+      enumerable: !!enumerable, // 转换为Boolean
       writable: true,
       configurable: true
     });
@@ -543,13 +571,15 @@
 
   /**
    * Parse simple path.
+   * 解析一个简单路径
    */
+  // unicodeRegExp是用于解析html标签，组件名，属性path的unicode字母，在上面有声明
   var bailRE = new RegExp(("[^" + (unicodeRegExp.source) + ".$_\\d]"));
   function parsePath (path) {
     if (bailRE.test(path)) {
       return
     }
-    var segments = path.split('.');
+    var segments = path.split('.'); // 使用split用'.'为标记生成一个数组
     return function (obj) {
       for (var i = 0; i < segments.length; i++) {
         if (!obj) { return }
@@ -562,24 +592,29 @@
   /*  */
 
   // can we use __proto__?
-  var hasProto = '__proto__' in {};
+  var hasProto = '__proto__' in {}; // 验证能否使用__proto__
 
   // Browser environment sniffing
-  var inBrowser = typeof window !== 'undefined';
-  var inWeex = typeof WXEnvironment !== 'undefined' && !!WXEnvironment.platform;
+  // 浏览器环境嗅探
+  var inBrowser = typeof window !== 'undefined'; // 在浏览器里：通过对typeof window对象，不为undefined则为浏览器
+  // 运行环境是微信
+  var inWeex = typeof WXEnvironment !== 'undefined' && !!WXEnvironment.platform; // 
   var weexPlatform = inWeex && WXEnvironment.platform.toLowerCase();
-  var UA = inBrowser && window.navigator.userAgent.toLowerCase();
-  var isIE = UA && /msie|trident/.test(UA);
-  var isIE9 = UA && UA.indexOf('msie 9.0') > 0;
-  var isEdge = UA && UA.indexOf('edge/') > 0;
-  var isAndroid = (UA && UA.indexOf('android') > 0) || (weexPlatform === 'android');
-  var isIOS = (UA && /iphone|ipad|ipod|ios/.test(UA)) || (weexPlatform === 'ios');
-  var isChrome = UA && /chrome\/\d+/.test(UA) && !isEdge;
-  var isPhantomJS = UA && /phantomjs/.test(UA);
-  var isFF = UA && UA.match(/firefox\/(\d+)/);
+  //浏览器 UA 判断，inBrowser为true才判断
+  var UA = inBrowser && window.navigator.userAgent.toLowerCase(); // 从window.navigator.userAgent拿到浏览器UA
+  // IE的内核是trident
+  var isIE = UA && /msie|trident/.test(UA); // 是ie
+  var isIE9 = UA && UA.indexOf('msie 9.0') > 0; // 是ie9
+  var isEdge = UA && UA.indexOf('edge/') > 0; // 是Edge，新版基于Chromium内核的edge不会在这里为true
+  var isAndroid = (UA && UA.indexOf('android') > 0) || (weexPlatform === 'android'); // 是Android
+  var isIOS = (UA && /iphone|ipad|ipod|ios/.test(UA)) || (weexPlatform === 'ios'); // 是IOS
+  var isChrome = UA && /chrome\/\d+/.test(UA) && !isEdge; // 是Chrome且不是Edge
+  var isPhantomJS = UA && /phantomjs/.test(UA); // 是PhantomJS（一个没有界面的浏览器）
+  var isFF = UA && UA.match(/firefox\/(\d+)/); // 是火狐
 
   // Firefox has a "watch" function on Object.prototype...
-  var nativeWatch = ({}).watch;
+  // 火狐浏览器在Object的原型上拥有watch方法，这里对这一现象做了兼容
+  var nativeWatch = ({}).watch; //这里是为了兼容火狐
 
   var supportsPassive = false;
   if (inBrowser) {
@@ -597,6 +632,7 @@
 
   // this needs to be lazy-evaled because vue may be required before
   // vue-server-renderer can set VUE_ENV
+  // 这个需求需要延迟加载, 因为在 vue服务器渲染设置VUE_ENV环境之前, 需要先加载vue
   var _isServer;
   var isServerRendering = function () {
     if (_isServer === undefined) {
@@ -604,6 +640,7 @@
       if (!inBrowser && !inWeex && typeof global !== 'undefined') {
         // detect presence of vue-server-renderer and avoid
         // Webpack shimming the process
+        // 检测vue的服务器渲染是否存在, 而且避免webpack去填充process
         _isServer = global['process'] && global['process'].env.VUE_ENV === 'server';
       } else {
         _isServer = false;
@@ -613,24 +650,32 @@
   };
 
   // detect devtools
+  // 输出vue的工具方法的全局钩子
   var devtools = inBrowser && window.__VUE_DEVTOOLS_GLOBAL_HOOK__;
 
   /* istanbul ignore next */
+  // 查看浏览器的对于API的支持
+  // 这里判断函数是否是系统函数, 比如 Function Object ExpReg window document Proxy, Promise, Map, Symbol, Reflect等原生方法
+  // console.log(isNative(Proxy)) // true
   function isNative (Ctor) {
     return typeof Ctor === 'function' && /native code/.test(Ctor.toString())
   }
 
+  // 这里使用了ES6的Reflect方法, 使用这个对象的目的是, 为了保证访问的是系统的原型方法, ownKeys 保证key的输出顺序, 先数组 后字符串
   var hasSymbol =
     typeof Symbol !== 'undefined' && isNative(Symbol) &&
     typeof Reflect !== 'undefined' && isNative(Reflect.ownKeys);
 
+  // 设置一个Set对象
   var _Set;
   /* istanbul ignore if */ // $flow-disable-line
+  // 如果浏览器存在Set则使用本地的Set
   if (typeof Set !== 'undefined' && isNative(Set)) {
     // use native Set when available.
     _Set = Set;
   } else {
     // a non-standard Set polyfill that only works with primitive keys.
+    // 一个非标准的Set的polyfill
     _Set = /*@__PURE__*/(function () {
       function Set () {
         this.set = Object.create(null);
