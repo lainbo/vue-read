@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+
+  <script>
+    function cached(fn) {
+      var cache = Object.create(null); // 创建空对象，用户缓存结果
+      return (function cachedFn(str) { // 闭包 获取缓存对象str属性的值，如果该值存在，直接返回，不存在调用一次fn，然后将结果存放到缓存对象中
+        var hit = cache[str];
+        return hit || (cache[str] = fn(str))
+      })
+    }
+    var hyphenateRE = /\B([A-Z])/g;
+    var hyphenate = cached(function (str) {
+      return str.replace(hyphenateRE, '-$1').toLowerCase()
+    });
+    console.log(hyphenate('aaaSd'))
+  </script>
+</body>
+
+</html>
