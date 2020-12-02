@@ -286,7 +286,7 @@
 
   /**
    * Always return false.
-   * 永远返回false
+   * 永远返回 false
    */
   var no = function (a, b, c) { return false; };
 
