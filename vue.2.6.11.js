@@ -698,11 +698,11 @@
 
   var warn = noop;
   var tip = noop;
-  var generateComponentTrace = (noop); // work around flow check
-  var formatComponentName = (noop);
+  var generateComponentTrace = (noop); // work around flow check 生成组件跟踪路径（组件数规则）
+  var formatComponentName = (noop); // 格式化组件名
 
   {
-    var hasConsole = typeof console !== 'undefined';
+    var hasConsole = typeof console !== 'undefined'; // 检测有没有console
     var classifyRE = /(?:^|[-_])(\w)/g;
     var classify = function (str) {
       return str
@@ -710,7 +710,7 @@
         .replace(/[-_]/g, '');
     };
 
-    warn = function (msg, vm) {
+    warn = function (msg, vm) {  // Vue警告
       var trace = vm ? generateComponentTrace(vm) : '';
 
       if (config.warnHandler) {
@@ -720,7 +720,7 @@
       }
     };
 
-    tip = function (msg, vm) {
+    tip = function (msg, vm) { // vue提示
       if (hasConsole && (!config.silent)) {
         console.warn("[Vue tip]: " + msg + (
           vm ? generateComponentTrace(vm) : ''
@@ -728,8 +728,8 @@
       }
     };
 
-    formatComponentName = function (vm, includeFile) {
-      if (vm.$root === vm) {
+    formatComponentName = function (vm, includeFile) { // 格式化组件名称
+      if (vm.$root === vm) { // 如果vm的$root全等于vm
         return '<Root>'
       }
       var options = typeof vm === 'function' && vm.cid != null
@@ -750,28 +750,28 @@
       )
     };
 
-    var repeat = function (str, n) {
+    var repeat = function (str, n) { // 生成一个重复的字符串，有n个str组成
       var res = '';
       while (n) {
         if (n % 2 === 1) { res += str; }
         if (n > 1) { str += str; }
-        n >>= 1;
+        n >>= 1; // 此处为有符号右移，e.g :9的二进制为1001，右移1代表将二进制的右侧开始舍弃掉1位，即100,100再转回十进制为4，所以9>>1 = 4
       }
       return res
     };
 
-    generateComponentTrace = function (vm) {
-      if (vm._isVue && vm.$parent) {
+    generateComponentTrace = function (vm) { // 生成组件跟踪
+      if (vm._isVue && vm.$parent) { // 如果是Vue组件且有父组件
         var tree = [];
-        var currentRecursiveSequence = 0;
+        var currentRecursiveSequence = 0; // 当前递归序列初始为0
         while (vm) {
           if (tree.length > 0) {
-            var last = tree[tree.length - 1];
-            if (last.constructor === vm.constructor) {
-              currentRecursiveSequence++;
-              vm = vm.$parent;
+            var last = tree[tree.length - 1]; // 拿到数组最后一个
+            if (last.constructor === vm.constructor) { // 如果最后一个的constructor和vm的constructor相等
+              currentRecursiveSequence++; // 递归序列自增
+              vm = vm.$parent; // 父组件赋值给vm
               continue
-            } else if (currentRecursiveSequence > 0) {
+            } else if (currentRecursiveSequence > 0) { // 当前递归序列大于0
               tree[tree.length - 1] = [last, currentRecursiveSequence];
               currentRecursiveSequence = 0;
             }
@@ -792,7 +792,7 @@
     };
   }
 
-  /*  */
+  /* Vue核心：数据监听最重要之一的 Dep */
 
   var uid = 0;
 
@@ -800,19 +800,29 @@
    * A dep is an observable that can have multiple
    * directives subscribing to it.
    */
+  // Dep是订阅者Watcher对应的数据依赖
+  // Dep是data每个对象包括子对象都拥有一个该对象, 当所绑定的数据有变更时, 通过dep.notify()通知Watcher
+  // Dep相当于把 Observe 监听到的信号做一个收集（collect dependencies），然后通过dep.notify()再通知到对应 Watcher ，从而进行视图更新。
   var Dep = function Dep () {
+    // 每个Dep都有唯一的ID
     this.id = uid++;
+    // subs用于存放依赖
     this.subs = [];
   };
 
+  // 往Dep的原型上添加向subs数组添加依赖的方法
   Dep.prototype.addSub = function addSub (sub) {
     this.subs.push(sub);
   };
 
+  // 往Dep的原型上添加向subs数组移除依赖的方法
   Dep.prototype.removeSub = function removeSub (sub) {
     remove(this.subs, sub);
   };
 
+  // 设置某个Watcher的依赖
+  // 这里添加了Dep.target是否存在的判断，目的是判断是不是Watcher的构造函数调用
+  // 也就是说判断他是Watcher的this.get调用的，而不是普通调用
   Dep.prototype.depend = function depend () {
     if (Dep.target) {
       Dep.target.addDep(this);
@@ -828,6 +838,7 @@
       // order
       subs.sort(function (a, b) { return a.id - b.id; });
     }
+    //通知所有绑定 Watcher。调用watcher的update()
     for (var i = 0, l = subs.length; i < l; i++) {
       subs[i].update();
     }
@@ -839,7 +850,7 @@
   Dep.target = null;
   var targetStack = [];
 
-  function pushTarget (target) {
+  function pushTarget (target) { //将gougetarget添加到targetStack，同时Dep的target赋值为当前watcher对象
     targetStack.push(target);
     Dep.target = target;
   }
@@ -849,7 +860,9 @@
     Dep.target = targetStack[targetStack.length - 1];
   }
 
-  /*  */
+  /* Vue核心：视图更新最重要的 VNode（ Virtual DOM） */
+  /* 把你的<template>描述成VNode，然后通过一系列操作后通过VNode行程真实的DOM进行挂载 */
+  /* 作用就是兼容性强，因为他只是个js对象，从而获得了服务端渲染，原生渲染，手写渲染函数的能力，减少DOM操作，页面变化只比对VNode，最后一步再挂载更新DOM */
 
   var VNode = function VNode (
     tag,
@@ -861,25 +874,25 @@
     componentOptions,
     asyncFactory
   ) {
-    this.tag = tag;
-    this.data = data;
-    this.children = children;
-    this.text = text;
-    this.elm = elm;
+    this.tag = tag; // 标签名
+    this.data = data; // 存储节点的属性，class，style 等 ，存储绑定的事件，其他的...
+    this.children = children; // 子元素
+    this.text = text; // 子元素
+    this.elm = elm; // 真实DOM节点，elm 会在需要创建DOM时完成赋值，具体函数在 createElm 中
     this.ns = undefined;
-    this.context = context;
+    this.context = context; // template 里面的动态数据要从这个 context 中获取，而 context 就是 Vue 实例，如果是页面，那么context 就是本页面的实例，如果是组件，context则是组件的实例
     this.fnContext = undefined;
     this.fnOptions = undefined;
     this.fnScopeId = undefined;
     this.key = data && data.key;
-    this.componentOptions = componentOptions;
-    this.componentInstance = undefined;
-    this.parent = undefined;
+    this.componentOptions = componentOptions; // 用于存放一些父子组件之间的props，事件，slot 什么的
+    this.componentInstance = undefined; // 组件生成的实例
+    this.parent = undefined; // 表示是组件的外壳节点
     this.raw = false;
-    this.isStatic = false;
+    this.isStatic = false; // 是否静态节点，当一个节点被标记为静态节点的时候，说明这个节点可以不用去更新它了，当数据变化的时候，可以忽略去比对他，以提高比对效率
     this.isRootInsert = true;
-    this.isComment = false;
-    this.isCloned = false;
+    this.isComment = false;// 是否是注释节点
+    this.isCloned = false; // 是否是注释节点
     this.isOnce = false;
     this.asyncFactory = asyncFactory;
     this.asyncMeta = undefined;
@@ -896,8 +909,8 @@
 
   Object.defineProperties(VNode.prototype, prototypeAccessors);
 
-  var createEmptyVNode = function (text) {
-    if (text === void 0) text = '';
+  var createEmptyVNode = function (text) { // 创建空的VNode节点
+    if (text === void 0) text = ''; // === void 0可以理解成 === undefined或者=== void(0)
 
     var node = new VNode();
     node.text = text;
@@ -905,7 +918,7 @@
     return node
   };
 
-  function createTextVNode (val) {
+  function createTextVNode (val) { // 创建文本VNode节点
     return new VNode(undefined, undefined, undefined, String(val))
   }
 
@@ -913,6 +926,9 @@
   // used for static nodes and slot nodes because they may be reused across
   // multiple renders, cloning them avoids errors when DOM manipulations rely
   // on their elm reference.
+  // 优化的表克隆
+  // 用于静态节点和插槽节点，因为它们可以在多个节点之间重用
+  // 多个渲染，克隆它们可以避免在DOM操作依赖时出错
   function cloneVNode (vnode) {
     var cloned = new VNode(
       vnode.tag,
@@ -942,9 +958,10 @@
   /*
    * not type checking this file because flow doesn't play well with
    * dynamically accessing methods on Array prototype
+   * 动态访问数组原型上的方法
    */
 
-  var arrayProto = Array.prototype;
+  var arrayProto = Array.prototype; // 先将Array的原型给变量
   var arrayMethods = Object.create(arrayProto);
 
   var methodsToPatch = [
@@ -959,11 +976,13 @@
 
   /**
    * Intercept mutating methods and emit events
+   * 将数组的基本操作方法拓展，实现响应式，视图更新。
+   * 因为对于对象的修改是可以直接触发响应式的，但是对数组直接赋值，是无法触发的，但是用到这里经过改造的方法。我们可以明显的看到 ob.dep.notify() 这一核心。
    */
   methodsToPatch.forEach(function (method) {
     // cache original method
     var original = arrayProto[method];
-    def(arrayMethods, method, function mutator () {
+    def(arrayMethods, method, function mutator () { // 在一个对象上定义一个属性的构造函数
       var args = [], len = arguments.length;
       while (len--) args[len] = arguments[len];
 
@@ -981,14 +1000,14 @@
       }
       if (inserted) { ob.observeArray(inserted); }
       // notify change
-      ob.dep.notify();
+      ob.dep.notify(); // 通知更改了 核心
       return result
     });
   });
 
   /*  */
 
-  var arrayKeys = Object.getOwnPropertyNames(arrayMethods);
+  var arrayKeys = Object.getOwnPropertyNames(arrayMethods); // 获取所有arrayMethods的属性名
 
   /**
    * In some cases we may want to disable observation inside a component's
