@@ -553,7 +553,7 @@
 
   /**
    * Define a property.
-   * 再一个对象上定义一个属性的构造函数
+   * 在一个对象上定义一个属性的构造函数
    */
   function def (obj, key, val, enumerable) {
     // Object.defineProperty(obj, prop, descriptor) 方法会直接在一个对象上定义一个新属性，或者修改一个对象的现有属性， 并返回这个对象
@@ -961,7 +961,7 @@
    * 动态访问数组原型上的方法
    */
 
-  var arrayProto = Array.prototype; // 先将Array的原型给变量
+  var arrayProto = Array.prototype; // 先将Array的原型给变量，防止污染原生数组方法
   var arrayMethods = Object.create(arrayProto);
 
   var methodsToPatch = [
@@ -1000,18 +1000,21 @@
       }
       if (inserted) { ob.observeArray(inserted); }
       // notify change
-      ob.dep.notify(); // 通知更改了 核心
+      ob.dep.notify(); // 通知更改了 
       return result
     });
   });
 
-  /*  */
+  /* Vue核心：数据监听最重要之一的 Observer */
+  // Observer（发布者） => Dep（订阅器） => Watcher（订阅者）
 
   var arrayKeys = Object.getOwnPropertyNames(arrayMethods); // 获取所有arrayMethods的属性名
 
   /**
    * In some cases we may want to disable observation inside a component's
    * update computation.
+   * 在某些情况下，我们可能希望禁用组件内部的观察
+   * 更新计算
    */
   var shouldObserve = true;
 
@@ -1025,16 +1028,28 @@
    * object's property keys into getter/setters that
    * collect dependencies and dispatch updates.
    */
+
+  /**
+   * 类比一个生活场景：
+   * 报社将各种时下热点的————（发布者）
+   * 新闻收集，————（数据）
+   * 然后制成各类报刊，发送到每家门口的
+   * 邮箱里，————（订阅器）
+   * 订阅报刊人们————（订阅者）
+   * 看到了新闻，
+   * 对新闻作出评论————（视图更新）
+   * 所以Observer的调用过程：initState()-->observe(data)-->new Observer()
+   */
   var Observer = function Observer (value) {
     this.value = value;
     this.dep = new Dep();
     this.vmCount = 0;
-    def(value, '__ob__', this);
-    if (Array.isArray(value)) {
-      if (hasProto) {
-        protoAugment(value, arrayMethods);
+    def(value, '__ob__', this); // 在一个对象上定义一个属性的构造函数
+    if (Array.isArray(value)) { // 输入是数组
+      if (hasProto) { // 检测__proto__是否存在
+        protoAugment(value, arrayMethods); // 增强目标对象的原形
       } else {
-        copyAugment(value, arrayMethods, arrayKeys);
+        copyAugment(value, arrayMethods, arrayKeys); // 通过定义扩展目标对象或数组隐藏的属性
       }
       this.observeArray(value);
     } else {
@@ -1046,6 +1061,7 @@
    * Walk through all properties and convert them into
    * getter/setters. This method should only be called when
    * value type is Object.
+   * 遍历每个属性走，并将其转换成的getter / setter方法。这个方法仅能够在参数类型为Object时候被调用
    */
   Observer.prototype.walk = function walk (obj) {
     var keys = Object.keys(obj);
@@ -1056,6 +1072,7 @@
 
   /**
    * Observe a list of Array items.
+   * 遍历数组，对数组的某个项进行观测
    */
   Observer.prototype.observeArray = function observeArray (items) {
     for (var i = 0, l = items.length; i < l; i++) {
@@ -1068,6 +1085,7 @@
   /**
    * Augment a target Object or Array by intercepting
    * the prototype chain using __proto__
+   * 通过使用__proto__拦截的原型链，然后在原型链中增加一个目标对象或数组
    */
   function protoAugment (target, src) {
     /* eslint-disable no-proto */
@@ -1091,6 +1109,9 @@
    * Attempt to create an observer instance for a value,
    * returns the new observer if successfully observed,
    * or the existing observer if the value already has one.
+   * 尝试为值创建观察者实例，
+   * 如果成功观察到，则返回新的观察者，
+   * 或现有的观察者（如果值已包含一个）
    */
   function observe (value, asRootData) {
     if (!isObject(value) || value instanceof VNode) {
@@ -1116,6 +1137,8 @@
 
   /**
    * Define a reactive property on an Object.
+   * 在对象上定义响应式
+   * 定义一个响应式对象，给对象动态添加 getter 和 setter ，用于依赖收集和派发更新。
    */
   function defineReactive$$1 (
     obj,
@@ -1124,7 +1147,7 @@
     customSetter,
     shallow
   ) {
-    var dep = new Dep();
+    var dep = new Dep(); // 1. 为属性创建一个发布者
 
     var property = Object.getOwnPropertyDescriptor(obj, key);
     if (property && property.configurable === false) {
@@ -1132,22 +1155,22 @@
     }
 
     // cater for pre-defined getter/setters
-    var getter = property && property.get;
-    var setter = property && property.set;
+    var getter = property && property.get; // 依赖收集
+    var setter = property && property.set; // 派发更新
     if ((!getter || setter) && arguments.length === 2) {
       val = obj[key];
     }
 
-    var childOb = !shallow && observe(val);
+    var childOb = !shallow && observe(val); // 2. 获取属性值的__ob__属性
     Object.defineProperty(obj, key, {
       enumerable: true,
       configurable: true,
       get: function reactiveGetter () {
         var value = getter ? getter.call(obj) : val;
         if (Dep.target) {
-          dep.depend();
+          dep.depend(); // 3. 添加 Dep
           if (childOb) {
-            childOb.dep.depend();
+            childOb.dep.depend(); //4. 也为属性值添加同样的 Dep 
             if (Array.isArray(value)) {
               dependArray(value);
             }
@@ -1177,12 +1200,21 @@
       }
     });
   }
+  /**
+   * Vue对数组的处理跟对象还是有挺大的不同，length是数组的一个很重要的属性
+   * 无论数组增加元素或者删除元素（通过splice，push等方法操作）length的值必定会更新
+   * 为什么不直接操作监听length呢？而需要拦截splice，push等方法进行数组的状态更新？
+   * 原因是：在数组length属性上用defineProperty拦截的时候，会报错。
+   */
+
 
   /**
    * Set a property on an object. Adds the new property and
    * triggers change notification if the property doesn't
    * already exist.
    */
+
+  // 在对象上设置一个属性。如果是新的属性就会触发更改通知（旧属性也会触发更新通知，因为第一个添加的时候已经监听了，之后自动触发，不再手动触发）
   function set (target, key, val) {
     if (isUndef(target) || isPrimitive(target)
     ) {
@@ -1216,6 +1248,7 @@
 
   /**
    * Delete a property and trigger change if necessary.
+   * 删除一个属性，如果必要触发通知
    */
   function del (target, key) {
     if (isUndef(target) || isPrimitive(target)
@@ -1248,7 +1281,7 @@
    * Collect dependencies on array elements when the array is touched, since
    * we cannot intercept array element access like property getters.
    */
-  function dependArray (value) {
+  function dependArray (value) { // 收集数组的依赖
     for (var e = (void 0), i = 0, l = value.length; i < l; i++) {
       e = value[i];
       e && e.__ob__ && e.__ob__.dep.depend();
@@ -1265,6 +1298,7 @@
    * how to merge a parent option value and a child option
    * value into the final value.
    */
+  // 配置选项合并策略
   var strats = config.optionMergeStrategies;
 
   /**
@@ -1285,8 +1319,10 @@
   /**
    * Helper that recursively merges two data objects together.
    */
+  // 详见 https://segmentfault.com/a/1190000014738314#item-1
   function mergeData (to, from) {
-    if (!from) { return to }
+    if (!from) { return to } // 如果from对象中有to对象里没有的属性，则调用set方法
+    // 如果from和to中有相同的key值，且key对应的value是对象，则会递归调用mergeData方法，否则以to的值为准，最后返回to对象
     var key, toVal, fromVal;
 
     var keys = hasSymbol
@@ -1333,6 +1369,11 @@
       // merged result of both functions... no need to
       // check if parentVal is a function here because
       // it has to be a function to pass previous merges.
+      // 当parentVal和childVal都存在时，
+      // 我们需要返回一个函数，该函数返回
+      // 合并两个函数的结果...无需
+      // 在这里检查parentVal是否是一个函数，因为
+      // 它必须是传递先前合并的函数。 
       return function mergedDataFn () {
         return mergeData(
           typeof childVal === 'function' ? childVal.call(this, this) : childVal,
@@ -1673,12 +1714,14 @@
     return options
   }
 
+  // 这一部分代码写的就是父子组件配置项的合并策略，包括：默认的合并策略、钩子函数的合并策略、filters/props、data合并策略，且包括标准的组件名、props写法有一个统一化规范要求。
+
   /**
    * Resolve an asset.
    * This function is used because child instances need access
    * to assets defined in its ancestor chain.
    */
-  function resolveAsset (
+  function resolveAsset ( // resolveAsset 全局注册组件用到
     options,
     type,
     id,
@@ -1710,7 +1753,7 @@
 
 
 
-  function validateProp (
+  function validateProp ( // prop的格式校验
     key,
     propOptions,
     propsData,
