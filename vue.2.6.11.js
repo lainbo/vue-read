@@ -1763,7 +1763,7 @@
     var absent = !hasOwn(propsData, key);
     var value = propsData[key];
     // boolean casting
-    var booleanIndex = getTypeIndex(Boolean, prop.type);
+    var booleanIndex = getTypeIndex(Boolean, prop.type); // prop为Boolean类型时做特殊处理
     if (booleanIndex > -1) {
       if (absent && !hasOwn(prop, 'default')) {
         value = false;
@@ -1777,7 +1777,7 @@
       }
     }
     // check default value
-    if (value === undefined) {
+    if (value === undefined) { // prop的值为空时，获取默认值，并创建观察者对象
       value = getPropDefaultValue(vm, prop, key);
       // since the default value is a fresh copy,
       // make sure to observe it.
@@ -1794,6 +1794,7 @@
 
   /**
    * Get the default value of a prop.
+   * 获取prop默认值
    */
   function getPropDefaultValue (vm, prop, key) {
     // no default, return undefined
@@ -1835,17 +1836,17 @@
     vm,
     absent
   ) {
-    if (prop.required && absent) {
-      warn(
+    if (prop.required && absent) { // 验证 required 属性
+      warn( // prop 定义时是 required，但是调用组件时没有传递该值（警告）
         'Missing required prop: "' + name + '"',
         vm
       );
       return
     }
-    if (value == null && !prop.required) {
+    if (value == null && !prop.required) { //  prop 定义时是非 required 的，且 value === null || value === undefined（符合要求，返回）
       return
     }
-    var type = prop.type;
+    var type = prop.type; // 验证 type 属性-- value 的类型必须是 type 数组里的其中之一
     var valid = !type || type === true;
     var expectedTypes = [];
     if (type) {
@@ -1867,7 +1868,7 @@
       return
     }
     var validator = prop.validator;
-    if (validator) {
+    if (validator) { // 验证自定义验证函数
       if (!validator(value)) {
         warn(
           'Invalid prop: custom validator check failed for prop "' + name + '".',
@@ -1879,9 +1880,10 @@
 
   var simpleCheckRE = /^(String|Number|Boolean|Function|Symbol)$/;
 
-  function assertType (value, type) {
+  function assertType (value, type) { // 验证`prop`的值符合指定的`type`类型，分为三类
     var valid;
     var expectedType = getType(type);
+    // 通过`typeof`判断的类型，如`String`、`Number`、`Boolean`、`Function`、`Symbol`
     if (simpleCheckRE.test(expectedType)) {
       var t = typeof value;
       valid = t === expectedType.toLowerCase();
@@ -1889,12 +1891,12 @@
       if (!valid && t === 'object') {
         valid = value instanceof type;
       }
-    } else if (expectedType === 'Object') {
+    } else if (expectedType === 'Object') { // 通过`Object.prototype.toString`判断`Object`/`Array`
       valid = isPlainObject(value);
     } else if (expectedType === 'Array') {
       valid = Array.isArray(value);
     } else {
-      valid = value instanceof type;
+      valid = value instanceof type; // 通过`instanceof`判断自定义的引用类型
     }
     return {
       valid: valid,
@@ -1906,6 +1908,7 @@
    * Use function string name to check built-in types,
    * because a simple equality check will fail when running
    * across different vms / iframes.
+   * 辅助函数：检测内置类型
    */
   function getType (fn) {
     var match = fn && fn.toString().match(/^\s*function (\w+)/);
@@ -1972,6 +1975,7 @@
   }
 
   /*  */
+  // 辅助函数：处理错误、错误打印
 
   function handleError (err, vm, info) {
     // Deactivate deps tracking while processing error handler to avoid possible infinite rendering.
@@ -2056,7 +2060,7 @@
   var callbacks = [];
   var pending = false;
 
-  function flushCallbacks () {
+  function flushCallbacks () { // flushCallbacks 挨个同步执行callbacks中回调
     pending = false;
     var copies = callbacks.slice(0);
     callbacks.length = 0;
@@ -2129,8 +2133,8 @@
       setTimeout(flushCallbacks, 0);
     };
   }
-
-  function nextTick (cb, ctx) {
+  // 把传入的 cb 回调函数用 try-catch 包裹后放在一个匿名函数中推入callbacks数组中，这么做是因为防止单个 cb 如果执行错误不至于让整个JS线程挂掉，每个 cb 都包裹是防止这些回调函数如果执行错误不会相互影响，比如前一个抛错了后一个仍然可以执行。
+  function nextTick (cb, ctx) { // 详细结束 https://zhuanlan.zhihu.com/p/55423103
     var _resolve;
     callbacks.push(function () {
       if (cb) {
