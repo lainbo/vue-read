@@ -2281,6 +2281,12 @@
    * Recursively traverse an object to evoke all converted
    * getters, so that every nested property inside the object
    * is collected as a "deep" dependency.
+   * 遍历：_traverse 
+   * 深度遍历traverse 对一个对象做深层递归遍历，因为遍历过程中就是对一个子对象的访问，
+   * 会触发它们的 getter 过程，这样就可以收集到依赖，
+   * 也就是订阅它们变化的 watcher，
+   * 且遍历过程中会把子响应式对象通过它们的 dep id 记录到 seenObjects，
+   * 避免以后重复访问
    */
   function traverse (val) {
     _traverse(val, seenObjects);
@@ -2310,7 +2316,7 @@
     }
   }
 
-  /*  */
+  /* 这里是针对v-model的处理，比如ie不支持change时间，就用input代替 */
 
   var normalizeEvent = cached(function (name) {
     var passive = name.charAt(0) === '&';
@@ -2326,6 +2332,14 @@
       passive: passive
     }
   });
+
+  /**
+   * 在初始构建实例时，旧节点是不存在的,
+   * 此时会调用createFnInvoker函数对事件回调函数做一层封装，
+   * 由于单个事件的回调可以有多个，
+   * 因此createFnInvoker的作用是对单个，多个回调事件统一封装处理，
+   * 返回一个当事件触发时真正执行的匿名函数。
+   */
 
   function createFnInvoker (fns, vm) {
     function invoker () {
@@ -2346,6 +2360,13 @@
     return invoker
   }
 
+
+  /**
+   * 它会遍历on事件对新节点事件绑定注册事件，
+   * 对旧节点移除事件监听，
+   * 它即要处理原生DOM事件的添加和移除，
+   * 也要处理自定义事件的添加和移除
+   */
   function updateListeners (
     on,
     oldOn,
