@@ -2134,7 +2134,7 @@
     };
   }
   // 把传入的 cb 回调函数用 try-catch 包裹后放在一个匿名函数中推入callbacks数组中，这么做是因为防止单个 cb 如果执行错误不至于让整个JS线程挂掉，每个 cb 都包裹是防止这些回调函数如果执行错误不会相互影响，比如前一个抛错了后一个仍然可以执行。
-  function nextTick (cb, ctx) { // 详细结束 https://zhuanlan.zhihu.com/p/55423103
+  function nextTick (cb, ctx) { // 详细解释 https://zhuanlan.zhihu.com/p/55423103
     var _resolve;
     callbacks.push(function () {
       if (cb) {
@@ -2164,7 +2164,7 @@
   var mark;
   var measure;
 
-  {
+  { // 性能相关
     var perf = inBrowser && window.performance;
     /* istanbul ignore if */
     if (
@@ -2185,7 +2185,7 @@
   }
 
   /* not type checking this file because flow doesn't play well with Proxy */
-
+  // 代理对象是es6的新特性，它主要用来自定义对象一些基本操作（如查找，赋值，枚举等）
   var initProxy;
 
   {
@@ -2218,9 +2218,10 @@
     };
 
     var hasProxy =
+      // 判断当前环境中Proxy是否可用
       typeof Proxy !== 'undefined' && isNative(Proxy);
 
-    if (hasProxy) {
+    if (hasProxy) { // 如果当前环境Proxy可用
       var isBuiltInModifier = makeMap('stop,prevent,self,ctrl,shift,alt,meta,exact');
       config.keyCodes = new Proxy(config.keyCodes, {
         set: function set (target, key, value) {

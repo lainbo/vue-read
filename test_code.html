@@ -13,13 +13,9 @@
     var repeat = function (str, n) { // 生成一个重复的字符串，有n个str组成
       var res = '';
       while (n) {
-        if (n % 2 === 1) {
-          res += str;
-        }
-        if (n > 1) {
-          str += str;
-        }
-        n >>= 1;
+        if (n % 2 === 1) { res += str; }
+        if (n > 1) { str += str; }
+        n >>= 1; // 此处为有符号右移，e.g :9的二进制为1001，右移1代表将二进制的右侧开始舍弃掉1位，即100,100再转回十进制为4，所以9>>1 = 4
       }
       return res
     };
