@@ -2406,7 +2406,8 @@
     }
   }
 
-  /*  */
+  /* 合并 VNode */
+  // 把 hook 函数合并到 def.data.hook[hookey] 中，生成新的 invoker，createFnInvoker 方法
 
   function mergeVNodeHook (def, hookKey, hook) {
     if (def instanceof VNode) {
@@ -2415,10 +2416,14 @@
     var invoker;
     var oldHook = def[hookKey];
 
+    // vnode 原本定义了 init、prepatch、insert、destroy 四个钩子函数，而 mergeVNodeHook 函数就是把一些新的钩子函数合并进来，例如在 transition 过程中合并的 insert 钩子函数，就会合并到组件 vnode 的 insert 钩子函数中，这样当组件插入后，就会执行我们定义的 enterHook 了。
+
     function wrappedHook () {
       hook.apply(this, arguments);
       // important: remove merged hook to ensure it's called only once
       // and prevent memory leak
+      // 重要：删除合并的钩子以确保仅调用一次
+      // 并防止内存泄漏
       remove(invoker.fns, wrappedHook);
     }
 
@@ -2441,7 +2446,7 @@
     def[hookKey] = invoker;
   }
 
-  /*  */
+  /* 抽取相应的从父组件上的prop */
 
   function extractPropsFromVNodeData (
     data,
@@ -2451,6 +2456,8 @@
     // we are only extracting raw values here.
     // validation and default values are handled in the child
     // component itself.
+    // 仅在此处提取原始值。
+    // 验证和默认值在组件本身中处理
     var propOptions = Ctor.options.props;
     if (isUndef(propOptions)) {
       return
@@ -2484,7 +2491,7 @@
     return res
   }
 
-  function checkProp (
+  function checkProp ( // 校验 Prop
     res,
     hash,
     key,
@@ -2513,16 +2520,19 @@
 
   // The template compiler attempts to minimize the need for normalization by
   // statically analyzing the template at compile time.
-  //
+  // 模板编译器尝试用最小的需求去规范：在编译时，静态分析模板
+
   // For plain HTML markup, normalization can be completely skipped because the
   // generated render function is guaranteed to return Array<VNode>. There are
   // two cases where extra normalization is needed:
+  // 对于纯 HTML 标签，可跳过标准化，因为生成渲染函数一定会返回 Vnode Array.有两种情况，需要额外去规范
 
   // 1. When the children contains components - because a functional component
   // may return an Array instead of a single root. In this case, just a simple
   // normalization is needed - if any child is an Array, we flatten the whole
   // thing with Array.prototype.concat. It is guaranteed to be only 1-level deep
   // because functional components already normalize their own children.
+  // 1.当子级包含组件时-因为功能组件可能会返回Array而不是单个根。在这种情况下，需要规范化-如果任何子级是Array，我们将整个具有Array.prototype.concat的东西。保证只有1级深度，因为功能组件已经规范了自己的子代。
   function simpleNormalizeChildren (children) {
     for (var i = 0; i < children.length; i++) {
       if (Array.isArray(children[i])) {
@@ -2536,6 +2546,12 @@
   // e.g. <template>, <slot>, v-for, or when the children is provided by user
   // with hand-written render functions / JSX. In such cases a full normalization
   // is needed to cater to all possible types of children values.
+  // 2.当子级包含始终生成嵌套数组的构造时，例如<template>，<slot>，v-for或用户提供子代时,具有手写的渲染功能/ JSX。在这种情况下，完全归一化,才能满足所有可能类型的子代值。
+  // 归一化操作其实就是将多维的数组，合并转换成一个一维的数组。在 Vue 中归一化分为三个级别，
+  // 不需要进行归一化
+  // 只需要简单的归一化处理，将数组打平一层
+  // 完全归一化，将一个 N 层的 children 完全打平为一维数组
+  // 利用递归来处理的，同时处理了一些边界情况。
   function normalizeChildren (children) {
     return isPrimitive(children)
       ? [createTextVNode(children)]
@@ -2598,7 +2614,7 @@
 
   /*  */
 
-  function initProvide (vm) {
+  function initProvide (vm) { // 将$options里的provide赋值到当前实例上
     var provide = vm.$options.provide;
     if (provide) {
       vm._provided = typeof provide === 'function'
@@ -2607,7 +2623,9 @@
     }
   }
 
+  // 主要作用是初始化vue实例的inject
   function initInjections (vm) {
+    // 首先就是一个对inject进行处理的方法resolveInejct
     var result = resolveInject(vm.$options.inject, vm);
     if (result) {
       toggleObserving(false);
@@ -2631,11 +2649,13 @@
   function resolveInject (inject, vm) {
     if (inject) {
       // inject is :any because flow is not smart enough to figure out cached
+      // 先建立一个存放结果的空对象
       var result = Object.create(null);
+      // 要对symbol和普通的对象进行不同的处理
       var keys = hasSymbol
         ? Reflect.ownKeys(inject)
         : Object.keys(inject);
-
+      // 对inject属性中的各个key进行遍历，然后沿着父组件链一直向上查找provide中和inject对应的属性，直到查找到根组件或者找到为止，然后返回结果
       for (var i = 0; i < keys.length; i++) {
         var key = keys[i];
         // #6574 in case the inject object is observed...
@@ -2643,6 +2663,7 @@
         var provideKey = inject[key].from;
         var source = vm;
         while (source) {
+          // 验证父组件链逐层向上查找provide，直到找到为止
           if (source._provided && hasOwn(source._provided, provideKey)) {
             result[key] = source._provided[provideKey];
             break
