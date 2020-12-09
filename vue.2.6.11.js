@@ -2690,20 +2690,26 @@
 
 
   /**
-   * Runtime helper for resolving raw children VNodes into a slot object.
+   * Runtime helper for r
+   * 判断children 有没有分发式插槽 并且过滤掉空的插槽,并且收集插槽esolving raw children VNodes into a slot object.
    */
   function resolveSlots (
     children,
     context
   ) {
     if (!children || !children.length) {
+      // 如果没有子节点 则返回一个空对象
       return {}
     }
     var slots = {};
+    //循环子节点
     for (var i = 0, l = children.length; i < l; i++) {
+      //获取单个子节点
       var child = children[i];
+      //获取子节点数据
       var data = child.data;
       // remove slot attribute if the node is resolved as a Vue slot node
+      // 如果节点被解析为Vue槽节点，则删除slot属性 slot 分发式属性
       if (data && data.attrs && data.attrs.slot) {
         delete data.attrs.slot;
       }
@@ -2712,11 +2718,14 @@
       if ((child.context === context || child.fnContext === context) &&
         data && data.slot != null
       ) {
+        //如果有内容分发 插槽
         var name = data.slot;
         var slot = (slots[name] || (slots[name] = []));
+        //child 有模板
         if (child.tag === 'template') {
           slot.push.apply(slot, child.children || []);
         } else {
+          //把子节点 添加 到slot插槽中
           slot.push(child);
         }
       } else {
@@ -2724,7 +2733,9 @@
       }
     }
     // ignore slots that contains only whitespace
+    // 忽略只包含空白的槽
     for (var name$1 in slots) {
+      //删除空的插槽
       if (slots[name$1].every(isWhitespace)) {
         delete slots[name$1];
       }
@@ -2733,6 +2744,7 @@
   }
 
   function isWhitespace (node) {
+    //不是异步
     return (node.isComment && !node.asyncFactory) || node.text === ' '
   }
 
@@ -2821,22 +2833,31 @@
 
   /**
    * Runtime helper for rendering v-for lists.
+   * 用于呈现v-for列表的运行时助手。
+   * 根据value 判断是数字，数组，对象，字符串，循环渲染
    */
   function renderList (
     val,
     render
   ) {
     var ret, i, l, keys, key;
+    // 如果是数组或者字符串
     if (Array.isArray(val) || typeof val === 'string') {
+      //获取长度
       ret = new Array(val.length);
+      // 循环数组或者字符串
       for (i = 0, l = val.length; i < l; i++) {
         ret[i] = render(val[i], i);
       }
+      //如果是数字
     } else if (typeof val === 'number') {
+      //变成数组 获取长度
       ret = new Array(val);
+      //循环数字
       for (i = 0; i < val; i++) {
         ret[i] = render(i + 1, i);
       }
+      //如果是对象
     } else if (isObject(val)) {
       if (hasSymbol && val[Symbol.iterator]) {
         ret = [];
@@ -2866,27 +2887,28 @@
 
   /**
    * Runtime helper for rendering <slot>
+   * 用于呈现<slot>的运行时帮助程序
    */
   function renderSlot (
-    name,
-    fallback,
-    props,
-    bindObject
+    name, //子组件中slot的name，匿名default
+    fallback, //子组件插槽中默认内容VNode数组，如果没有插槽内容，则显示该内容
+    props, //子组件传递到插槽的props
+    bindObject // 针对<slot v-bind="obj"></slot> obj必须是一个对象
   ) {
-    var scopedSlotFn = this.$scopedSlots[name];
-    var nodes;
+    var scopedSlotFn = this.$scopedSlots[name]; // 判断父组件是否传递作用域插槽
+    var nodes; //虚拟dom
     if (scopedSlotFn) { // scoped slot
       props = props || {};
-      if (bindObject) {
+      if (bindObject) { //bindObject 必须是一个对象
         if (!isObject(bindObject)) {
           warn(
             'slot v-bind without argument expects an Object',
             this
           );
         }
-        props = extend(extend({}, bindObject), props);
+        props = extend(extend({}, bindObject), props); //合并对象和props属性
       }
-      nodes = scopedSlotFn(props) || fallback;
+      nodes = scopedSlotFn(props) || fallback; // 传入props生成相应的VNode
     } else {
       nodes = this.$slots[name] || fallback;
     }
@@ -2903,12 +2925,18 @@
 
   /**
    * Runtime helper for resolving filters
+   * 用于解析过滤器的运行时助手
+   * 返回注册指令或者组建的对象
+   * 检测指令是否在 组件对象上面 包括
    */
   function resolveFilter (id) {
     return resolveAsset(this.$options, 'filters', id, true) || identity
   }
 
-  /*  */
+  /** 
+   * 检查key是否匹配
+   * 如果没有匹配上的就返回true
+  */
 
   function isKeyNotMatch (expect, actual) {
     if (Array.isArray(expect)) {
@@ -2922,20 +2950,27 @@
    * Runtime helper for checking keyCodes from config.
    * exposed as Vue.prototype._k
    * passing in eventKeyName as last argument separately for backwards compat
+   * 用于从配置中检查密钥代码的运行时帮助程序
+   * 暴露为Vue.prototype._k
+   * 为向后compat分别传入eventKeyName作为最后一个参数
+     检查两个key是否相等，如果不想等返回true 如果相等返回false
    */
   function checkKeyCodes (
-    eventKeyCode,
-    key,
-    builtInKeyCode,
-    eventKeyName,
-    builtInKeyName
+    eventKeyCode,//事件key
+    key, // 键
+    builtInKeyCode,//内建键码
+    eventKeyName,//事件键名
+    builtInKeyName //内建键名
   ) {
-    var mappedKeyCode = config.keyCodes[key] || builtInKeyCode;
+    var mappedKeyCode = config.keyCodes[key] || builtInKeyCode; //映射的关键代码
     if (builtInKeyName && eventKeyName && !config.keyCodes[key]) {
+      //比较两个key是否相等
       return isKeyNotMatch(builtInKeyName, eventKeyName)
     } else if (mappedKeyCode) {
+      //比较两个key是否相等
       return isKeyNotMatch(mappedKeyCode, eventKeyCode)
     } else if (eventKeyName) {
+      //把驼峰的key 转换成 -链接  判断 key 不一样
       return hyphenate(eventKeyName) !== key
     }
   }
@@ -2944,34 +2979,36 @@
 
   /**
    * Runtime helper for merging v-bind="object" into a VNode's data.
+   * 用于将v-bind="object"合并到VNode的数据中的运行时助手。
+   * 检查value 是否是对象，并且为value 添加update 事件
    */
   function bindObjectProps (
-    data,
-    tag,
-    value,
-    asProp,
-    isSync
+    data,//数据
+    tag,//vonde 节点
+    value,//value值
+    asProp,//prosp属性
+    isSync//是否 同步
   ) {
     if (value) {
-      if (!isObject(value)) {
+      if (!isObject(value)) { //判断绑定值如果不是对象
         warn(
           'v-bind without argument expects an Object or Array value',
           this
         );
       } else {
-        if (Array.isArray(value)) {
-          value = toObject(value);
+        if (Array.isArray(value)) { //判断值如果是数组
+          value = toObject(value); //转成对象
         }
         var hash;
         var loop = function (key) {
           if (
-            key === 'class' ||
-            key === 'style' ||
-            isReservedAttribute(key)
+            key === 'class' || //如果key 是class
+            key === 'style' || // 或者是style
+            isReservedAttribute(key) //或者是'key,ref,slot,slot-scope,is'
           ) {
             hash = data;
           } else {
-            var type = data.attrs && data.attrs.type;
+            var type = data.attrs && data.attrs.type; //如果含有其他属性 或者 tyep
             hash = asProp || config.mustUseProp(tag, type, key)
               ? data.domProps || (data.domProps = {})
               : data.attrs || (data.attrs = {});
@@ -2989,7 +3026,7 @@
             }
           }
         };
-
+        //循环 value中的所有key
         for (var key in value) loop(key);
       }
     }
