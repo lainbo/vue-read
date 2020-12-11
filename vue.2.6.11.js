@@ -3037,81 +3037,97 @@
 
   /**
    * Runtime helper for rendering static trees.
+   * 用于呈现静态树的运行时助手。
    */
   function renderStatic (
-    index,
-    isInFor
+    index, //索引
+    isInFor //是否是for指令
   ) {
     var cached = this._staticTrees || (this._staticTrees = []);
     var tree = cached[index];
     // if has already-rendered static tree and not inside v-for,
     // we can reuse the same tree.
+    // 如果已经渲染的静态树不在v - for中，
+    // 我们可以使用相同的树
     if (tree && !isInFor) {
       return tree
     }
     // otherwise, render a fresh tree.
+    //  否则，渲染一个新的树。
     tree = cached[index] = this.$options.staticRenderFns[index].call(
       this._renderProxy,
       null,
       this // for render fns generated for functional component templates
     );
+    //循环标志静态的vonde 虚拟dom
     markStatic(tree, ("__static__" + index), false);
     return tree
   }
 
   /**
    * Runtime helper for v-once.
+   * v-once. 的运行时助手。
    * Effectively it means marking the node as static with a unique key.
+   * 实际上，这意味着使用唯一键将节点标记为静态。
    */
   function markOnce (
     tree,
     index,
     key
   ) {
+    //循环标志静态的vonde 虚拟dom
     markStatic(tree, ("__once__" + index + (key ? ("_" + key) : "")), true);
     return tree
   }
 
+  //循环标志静态的vonde 虚拟dom
   function markStatic (
-    tree,
-    key,
-    isOnce
+    tree,//树
+    key,//key
+    isOnce//是否是v-once指令
   ) {
-    if (Array.isArray(tree)) {
+    if (Array.isArray(tree)) {//判断是否是数组
       for (var i = 0; i < tree.length; i++) {
         if (tree[i] && typeof tree[i] !== 'string') {
+          //标志静态的vonde 虚拟dom
           markStaticNode(tree[i], (key + "_" + i), isOnce);
         }
       }
     } else {
+      //标志静态的vonde 虚拟dom
       markStaticNode(tree, key, isOnce);
     }
   }
 
+  //标志静态的vonde 虚拟dom
   function markStaticNode (node, key, isOnce) {
     node.isStatic = true;
     node.key = key;
     node.isOnce = isOnce;
   }
 
-  /*  */
+  /**
+   * 绑定对象监听器
+   * 判断value 是否是对象，并且为数据 data.on 合并data和value 的on
+  **/
 
   function bindObjectListeners (data, value) {
     if (value) {
-      if (!isPlainObject(value)) {
+      if (!isPlainObject(value)) { //value 如果不是对象则发出警告日志
         warn(
           'v-on without argument expects an Object value',
           this
         );
       } else {
-        var on = data.on = data.on ? extend({}, data.on) : {};
-        for (var key in value) {
-          var existing = on[key];
+        var on = data.on = data.on ? extend({}, data.on) : {}; //获取事件
+        for (var key in value) { //遍历循环value 值
+          var existing = on[key];// 合并他们两事件
           var ours = value[key];
           on[key] = existing ? [].concat(existing, ours) : ours;
         }
       }
     }
+    //返回合并过的数据
     return data
   }
 
@@ -3168,63 +3184,75 @@
     return typeof value === 'string' ? symbol + value : value
   }
 
-  /*  */
+  /* 安装渲染助手 */
 
   function installRenderHelpers (target) {
-    target._o = markOnce;
-    target._n = toNumber;
-    target._s = toString;
-    target._l = renderList;
-    target._t = renderSlot;
-    target._q = looseEqual;
-    target._i = looseIndexOf;
-    target._m = renderStatic;
-    target._f = resolveFilter;
-    target._k = checkKeyCodes;
-    target._b = bindObjectProps;
-    target._v = createTextVNode;
-    target._e = createEmptyVNode;
-    target._u = resolveScopedSlots;
-    target._g = bindObjectListeners;
+    target._o = markOnce;//实际上，这意味着使用唯一键将节点标记为静态。* 标志 v-once. 指令
+    target._n = toNumber;//字符串转数字，如果失败则返回字符串
+    target._s = toString;//根据value 判断是数字，数组，对象，字符串，循环渲染
+    target._l = renderList;//用于呈现<slot>的运行时帮助程序 创建虚拟slot vonde
+    target._t = renderSlot;//检测a和b的数据类型，是否是不是数组或者对象，对象的key长度一样即可，数组长度一样即可
+    target._q = looseEqual;//或者 arr数组中的对象，或者对象数组 是否和val 相等
+    target._i = looseIndexOf;//用于呈现静态树的运行时助手。 创建静态虚拟vnode
+    target._m = renderStatic;// 用于解析过滤器的运行时助手
+    target._f = resolveFilter;// 检查两个key是否相等，如果不想等返回true 如果相等返回false
+    target._k = checkKeyCodes;// 检查两个key是否相等，如果不想等返回true 如果相等返回false
+    target._b = bindObjectProps; //用于将v-bind="object"合并到VNode的数据中的运行时助手。  检查value 是否是对象，并且为value 添加update 事件
+    target._v = createTextVNode;//创建一个文本节点 vonde
+    target._e = createEmptyVNode;// 创建一个节点 为注释节点 空的vnode
+    target._u = resolveScopedSlots;//  解决范围槽 把对象数组事件分解成 对象
+    target._g = bindObjectListeners;//判断value 是否是对象，并且为数据 data.on 合并data和value 的on 事件
     target._d = bindDynamicKeys;
     target._p = prependModifier;
   }
 
-  /*  */
+  /**
+    *  添加虚拟dom 属性data，添加事件，添加props属性，添加parent 属性 添加injections属性
+    *  添加slots插槽渲染方法 重写 this._c   createElement 函数 渲染vonde
+    *  安渲染函数到FunctionalRenderContext.prototype原型中，这样该对象和 Vue有着同样的渲染功能
+    *  installRenderHelpers(FunctionalRenderContext.prototype)
+   */
 
   function FunctionalRenderContext (
-    data,
-    props,
-    children,
-    parent,
-    Ctor
+    data,// vonde 虚拟dom的属性数据
+    props,//props 属性
+    children, //子节点
+    parent,//vm
+    Ctor//VueComponent 构造函数
   ) {
     var this$1 = this;
 
     var options = Ctor.options;
     // ensure the createElement function in functional components
     // gets a unique context - this is necessary for correct named slot check
+
+    // 确保函数组件中的createElement函数
+    // 获取唯一上下文——这对于正确的命名槽检查是必要的
     var contextVm;
-    if (hasOwn(parent, '_uid')) {
-      contextVm = Object.create(parent);
+    if (hasOwn(parent, '_uid')) { //判断这个组件是否是 new _init  过
+      contextVm = Object.create(parent);  //创建一个对象
       // $flow-disable-line
       contextVm._original = parent;
     } else {
       // the context vm passed in is a functional context as well.
       // in this case we want to make sure we are able to get a hold to the
       // real context instance.
+      //传入的上下文vm也是一个功能上下文。
+      //在这种情况下，我们想确定一下我们能否得到
+      //真实的上下文实例。
       contextVm = parent;
       // $flow-disable-line
       parent = parent._original;
     }
-    var isCompiled = isTrue(options._compiled);
-    var needNormalization = !isCompiled;
+    var isCompiled = isTrue(options._compiled); // 判断是否是模板编译
+    var needNormalization = !isCompiled;  //如果不是模板编译
 
-    this.data = data;
-    this.props = props;
-    this.children = children;
-    this.parent = parent;
-    this.listeners = data.on || emptyObject;
+    this.data = data; // vonde 虚拟dom的数据
+    this.props = props; //  props 属性
+    this.children = children; //子节点
+    this.parent = parent; //vm
+    this.listeners = data.on || emptyObject; // 事件
+    // inject 选项应该是一个字符串数组或一个对象，该对象的 key 代表了本地绑定的名称，value 为其 key (字符串或 Symbol) 以在可用的注入中搜索。
     this.injections = resolveInject(options.inject, parent);
     this.slots = function () {
       if (!this$1.$slots) {
@@ -3244,16 +3272,21 @@
     }));
 
     // support for compiled functional template
+    //支持编译的函数模板
     if (isCompiled) {
       // exposing $options for renderStatic()
+      // exposing $options for renderStatic() 为renderStatic()公开$options
       this.$options = options;
       // pre-resolve slots for renderSlot()
+      // pre-resolve slots for renderSlot() renderSlot()的预解析槽()
       this.$slots = this.slots();
+      // data.scopedSlots = {default: children[0]};  //获取插槽
       this.$scopedSlots = normalizeScopedSlots(data.scopedSlots, this.$slots);
     }
 
-    if (options._scopeId) {
+    if (options._scopeId) {//范围id
       this._c = function (a, b, c, d) {
+        //创建子节点 vonde
         var vnode = createElement(contextVm, a, b, c, d, needNormalization);
         if (vnode && !Array.isArray(vnode)) {
           vnode.fnScopeId = options._scopeId;
@@ -3266,18 +3299,20 @@
     }
   }
 
+  //安装渲染助手
   installRenderHelpers(FunctionalRenderContext.prototype);
 
+  //创建功能组件 通过检测 props 属性 然后合并props   之后创建 vond 虚拟dom
   function createFunctionalComponent (
-    Ctor,
-    propsData,
-    data,
-    contextVm,
-    children
+    Ctor,//组件构造函数VueComponent
+    propsData,//组件props数据
+    data,//  组件属性 数据
+    contextVm,//vm  vue实例化对象
+    children//组件子节点
   ) {
-    var options = Ctor.options;
+    var options = Ctor.options;//获取拓展参数
     var props = {};
-    var propOptions = options.props;
+    var propOptions = options.props;//获取props 参数 就是组建 定义的props 类型数据
     if (isDef(propOptions)) {
       for (var key in propOptions) {
         props[key] = validateProp(key, propOptions, propsData || emptyObject);
@@ -3287,22 +3322,25 @@
       if (isDef(data.props)) { mergeProps(props, data.props); }
     }
 
-    var renderContext = new FunctionalRenderContext(
-      data,
-      props,
-      children,
-      contextVm,
-      Ctor
+    var renderContext = new FunctionalRenderContext( //实例化一个对象
+      data,// vonde 虚拟dom的数据
+      props,//props 属性
+      children,//子节点
+      contextVm,//vm
+      Ctor //VueComponent 构造函数
     );
-
+    //创建 vnode
     var vnode = options.render.call(null, renderContext._c, renderContext);
 
-    if (vnode instanceof VNode) {
+    if (vnode instanceof VNode) {//如果 vnode 的构造函数是VNode
+      //克隆并标记函数结果
       return cloneAndMarkFunctionalResult(vnode, data, renderContext.parent, options, renderContext)
-    } else if (Array.isArray(vnode)) {
+    } else if (Array.isArray(vnode)) {//如果vnode 是数组
+      //normalizeArrayChildren 创建一个规范的子节点 vonde
       var vnodes = normalizeChildren(vnode) || [];
-      var res = new Array(vnodes.length);
+      var res = new Array(vnodes.length);// 创建一个空数组
       for (var i = 0; i < vnodes.length; i++) {
+        //克隆并标记函数结果 静态 节点
         res[i] = cloneAndMarkFunctionalResult(vnodes[i], data, renderContext.parent, options, renderContext);
       }
       return res
