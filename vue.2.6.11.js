@@ -3347,6 +3347,7 @@
     }
   }
 
+  //克隆并标记函数结果 静态 节点
   function cloneAndMarkFunctionalResult (vnode, data, contextVm, options, renderContext) {
     // #7817 clone node before setting fnContext, otherwise if the node is reused
     // (e.g. it was from a cached normal slot) the fnContext causes named slots
@@ -3357,12 +3358,12 @@
     {
       (clone.devtoolsMeta = clone.devtoolsMeta || {}).renderContext = renderContext;
     }
-    if (data.slot) {
+    if (data.slot) {//判断是否有插槽
       (clone.data || (clone.data = {})).slot = data.slot;
     }
     return clone
   }
-
+  // 前拷贝合并 props属性 并且把 from 的key 由 - 写法变成 驼峰的写法。
   function mergeProps (to, from) {
     for (var key in from) {
       to[camelize(key)] = from[key];
@@ -3378,17 +3379,22 @@
   /*  */
 
   // inline hooks to be invoked on component VNodes during patch
-  var componentVNodeHooks = {
-    init: function init (vnode, hydrating) {
+  //补丁期间在组件vnode上调用的内联钩子
+  var componentVNodeHooks = {  //组件钩子函数
+    init: function init (vnode, hydrating) { //初始化组件函数
       if (
-        vnode.componentInstance &&
-        !vnode.componentInstance._isDestroyed &&
-        vnode.data.keepAlive
+        //根据Vnode生成VueComponent实例
+        vnode.componentInstance && //已经实例过的组件就只更新
+        !vnode.componentInstance._isDestroyed && //并且没有销毁
+        vnode.data.keepAlive //并且是keepAlive 组件
       ) {
         // kept-alive components, treat as a patch
+        // kept-alive组件，当作补丁
+        // work around flow 围绕流程工作
         var mountedNode = vnode; // work around flow
         componentVNodeHooks.prepatch(mountedNode, mountedNode);
       } else {
+        // 调用VueComponent构造函数去实例化组件对象
         var child = vnode.componentInstance = createComponentInstanceForVnode(
           vnode,
           activeInstance
@@ -3398,24 +3404,25 @@
     },
 
     prepatch: function prepatch (oldVnode, vnode) {
-      var options = vnode.componentOptions;
-      var child = vnode.componentInstance = oldVnode.componentInstance;
-      updateChildComponent(
-        child,
-        options.propsData, // updated props
-        options.listeners, // updated listeners
-        vnode, // new parent vnode
-        options.children // new children
+      var options = vnode.componentOptions; //组件的参数
+      var child = vnode.componentInstance = oldVnode.componentInstance; //组件实例
+      updateChildComponent( //更新子组件
+        child,//子节点
+        options.propsData, // updated props 组件属性。属性数据
+        options.listeners, // updated listeners 属性事件
+        vnode, // new parent vnode 新的vond 虚拟dom
+        options.children // new children 新的子节点 虚拟dom
       );
     },
 
-    insert: function insert (vnode) {
-      var context = vnode.context;
-      var componentInstance = vnode.componentInstance;
+    insert: function insert (vnode) { //安装插入
+      var context = vnode.context; //vm vue 实例化对象或者是VueComponent 构造函数实例化对象
+      var componentInstance = vnode.componentInstance; //组件实例化对象
       if (!componentInstance._isMounted) {
         componentInstance._isMounted = true;
-        callHook(componentInstance, 'mounted');
+        callHook(componentInstance, 'mounted'); //触发mounted钩子函数
       }
+      //如果有keepAlive 组件才触发下面
       if (vnode.data.keepAlive) {
         if (context._isMounted) {
           // vue-router#1212
@@ -3423,19 +3430,29 @@
           // change, so directly walking the tree here may call activated hooks
           // on incorrect children. Instead we push them into a queue which will
           // be processed after the whole patch process ended.
+          // 在更新期间，kept-alive组件的子组件可以
+          // 改变，所以直接在树中行走可能会调用激活钩子
+          // 关于不正确的孩子。相反，我们把它们推到一个队列中
+          // 在整个补丁过程结束后处理。
+          // 添加活跃的组件函数 把活跃的vm添加到activatedChildren 中
           queueActivatedComponent(componentInstance);
         } else {
+          //判断是否有不活跃的组件 禁用他 如果有活跃组件则触发钩子函数activated
           activateChildComponent(componentInstance, true /* direct */);
         }
       }
     },
 
+    //销毁钩子函数
     destroy: function destroy (vnode) {
-      var componentInstance = vnode.componentInstance;
+      var componentInstance = vnode.componentInstance; //组件实例化
       if (!componentInstance._isDestroyed) {
-        if (!vnode.data.keepAlive) {
+        if (!vnode.data.keepAlive) { //如果组件不是keepAlive 则销毁掉
+          // 销毁不是keepAlive 的组件 改组件是虚拟组件 用于 缓存单页 返回上一页数据
           componentInstance.$destroy();
         } else {
+          // keepAlive组件则走这里
+          // 循环子组件 和父组件  判断是否有禁止的组件 如果有活跃组件则执行生命后期函数deactivated
           deactivateChildComponent(componentInstance, true /* direct */);
         }
       }
@@ -3443,28 +3460,31 @@
   };
 
   var hooksToMerge = Object.keys(componentVNodeHooks);
-
+  //创建组件
   function createComponent (
-    Ctor,
-    data,
-    context,
-    children,
-    tag
+    Ctor, //VueComponen函数
+    data, // 组件标签上面的属性数据
+    context, //vm Vue 实例化之后的对象上下文
+    children,//子节点
+    tag //标签
   ) {
     if (isUndef(Ctor)) {
       return
     }
-
+    //用来标识扩展所有普通对象的“基”构造函数
+    // Weex的多实例场景中的组件。
     var baseCtor = context.$options._base;
 
     // plain options object: turn it into a constructor
+    //普通选项对象:将其转换为构造函数  _base vue 的 构造函数
     if (isObject(Ctor)) {
       Ctor = baseCtor.extend(Ctor);
     }
 
     // if at this stage it's not a constructor or an async component factory,
     // reject.
-    if (typeof Ctor !== 'function') {
+    //如果在这个阶段它不是构造函数或异步组件工厂，
+    if (typeof Ctor !== 'function') { //如果不是函数则发出警告
       {
         warn(("Invalid Component definition: " + (String(Ctor))), context);
       }
@@ -3472,14 +3492,19 @@
     }
 
     // async component
+    //异步组件
     var asyncFactory;
-    if (isUndef(Ctor.cid)) {
+    if (isUndef(Ctor.cid)) { //组件的id 唯一标识符
       asyncFactory = Ctor;
-      Ctor = resolveAsyncComponent(asyncFactory, baseCtor);
+      // 解决异步组件 更新组建数据
+      Ctor = resolveAsyncComponent(asyncFactory, baseCtor); //返回组件现在的状态
       if (Ctor === undefined) {
         // return a placeholder node for async component, which is rendered
         // as a comment node but preserves all the raw information for the node.
         // the information will be used for async server-rendering and hydration.
+        // 为已呈现的异步组件返回占位符节点
+        // 作为注释节点，但保留该节点的所有原始信息。
+        // 这些信息将用于异步服务器呈现和水合作用。
         return createAsyncPlaceholder(
           asyncFactory,
           data,
@@ -3494,33 +3519,46 @@
 
     // resolve constructor options in case global mixins are applied after
     // component constructor creation
+    //解析构造函数选项，以防在后面应用全局mixin
+    //组件构造函数创建
+    //解决构造函数的选择 options 参数，合并，过滤重复 options参数
     resolveConstructorOptions(Ctor);
 
     // transform component v-model data into props & events
+    // 如果定义有 model 转义 model 并且绑定 v-model
     if (isDef(data.model)) {
       transformModel(Ctor.options, data);
     }
 
     // extract props
+    // extract props  从…提取，文件的摘录 extractPropsFromVNodeData 从 props属性中获取vnode数据
     var propsData = extractPropsFromVNodeData(data, Ctor, tag);
 
     // functional component
+    // functional component 功能组成部分，功能部件
     if (isTrue(Ctor.options.functional)) {
       return createFunctionalComponent(Ctor, propsData, data, context, children)
     }
 
     // extract listeners, since these needs to be treated as
     // child component listeners instead of DOM listeners
+    //提取监听器，因为这些监听器需要被当作
+    //子组件监听器而不是DOM监听器
     var listeners = data.on;
     // replace with listeners with .native modifier
     // so it gets processed during parent component patch.
+    //用.native修饰符替换监听器
+    //因此它在父组件补丁中被处理
     data.on = data.nativeOn;
 
-    if (isTrue(Ctor.options.abstract)) {
+    if (isTrue(Ctor.options.abstract)) { //静态
       // abstract components do not keep anything
       // other than props & listeners & slot
 
       // work around flow
+      //抽象组件不保存任何东西
+      //除了道具、监听器和插槽
+      //围绕流程工作
       var slot = data.slot;
       data = {};
       if (slot) {
@@ -3542,25 +3580,26 @@
 
     return vnode
   }
-
+  //调用VueComponent构造函数去实例化组件对象
   function createComponentInstanceForVnode (
-    vnode, // we know it's MountedComponentVNode but flow doesn't
-    parent // activeInstance in lifecycle state
+    vnode, // we know it's MountedComponentVNode but flow doesn't //我们知道它是MountedComponentVNode，但flow不是
+    parent // activeInstance in lifecycle state 处于生命周期状态的activeInstance
   ) {
     var options = {
-      _isComponent: true,
-      _parentVnode: vnode,
+      _isComponent: true, //是否是组件
+      _parentVnode: vnode, //组件的父节点
       parent: parent
     };
-    // check inline-template render functions
-    var inlineTemplate = vnode.data.inlineTemplate;
+    // check inline-template render functions 检查内联模板渲染函数
+    var inlineTemplate = vnode.data.inlineTemplate; //内联模板
     if (isDef(inlineTemplate)) {
-      options.render = inlineTemplate.render;
-      options.staticRenderFns = inlineTemplate.staticRenderFns;
+      options.render = inlineTemplate.render; //如果有内联模板 获取内联模板的渲染函数
+      options.staticRenderFns = inlineTemplate.staticRenderFns; //获取静态渲染函数
     }
-    return new vnode.componentOptions.Ctor(options)
+    return new vnode.componentOptions.Ctor(options) //实例化 VueComponent 构造函数
   }
 
+  //安装组件钩子函数
   function installComponentHooks (data) {
     var hooks = data.hook || (data.hook = {});
     for (var i = 0; i < hooksToMerge.length; i++) {
@@ -3585,8 +3624,17 @@
 
   // transform component v-model info (value and callback) into
   // prop and event handler respectively.
+  //将组件v-model信息(值和回调)转换为
+  //分别是prop和event handler。
+
+  //将标签含有v-model 信息属性转换为
+  //获取options.model.prop属性  获取options.model.event 事件类型，
+  // 把data.model.value 数据赋值到data.props.value中 如果value的key没有定义 则是input
+  // 把事件  data.model.callback 添加到 data.on[event] 中  如果没有定义是input
   function transformModel (options, data) {
+    //获取prop 如果获取不到 则取值 value
     var prop = (options.model && options.model.prop) || 'value';
+    //获取event如果获取不到 则取值 input
     var event = (options.model && options.model.event) || 'input'
       ; (data.attrs || (data.attrs = {}))[prop] = data.model.value;
     var on = data.on || (data.on = {});
