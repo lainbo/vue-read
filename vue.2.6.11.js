@@ -3658,51 +3658,75 @@
   var SIMPLE_NORMALIZE = 1;
   var ALWAYS_NORMALIZE = 2;
 
-  // wrapper function for providing a more flexible interface
+  // wrapper function for providing a more flexible interface 包装器功能，提供更灵活的接口
   // without getting yelled at by flow
+  // 创建dom节点
   function createElement (
-    context,
-    tag,
-    data,
-    children,
-    normalizationType,
+    context, //vm new Vue 实例化的对象
+    tag, //标签标签名称
+    data, //标签数据，包括属性，class style 指令等
+    children, //子节点
+    normalizationType, //应该设置为常量ALWAYS_NORMALIZE的值
     alwaysNormalize
   ) {
+    //如果数据是数组或者是  //判断数据类型是否是string，number，symbol，boolean
     if (Array.isArray(data) || isPrimitive(data)) {
       normalizationType = children;
       children = data;
       data = undefined;
     }
+    //如果是真的是  true
     if (isTrue(alwaysNormalize)) {
       normalizationType = ALWAYS_NORMALIZE;
     }
+    //创建节点
     return _createElement(context, tag, data, children, normalizationType)
   }
 
+  //创建虚拟dom节点
   function _createElement (
-    context,
-    tag,
-    data,
-    children,
-    normalizationType
+    context, //vm vue实例化的对象
+    tag,//节点
+    data,//标签数据，包括属性，class style 指令等
+    children, //子节点
+    normalizationType // 1或者2
   ) {
+    /**
+     *  如果存在data.__ob__，
+     * 说明data是被Observer观察的数据
+     * 不能用作虚拟节点的data
+     * 需要抛出警告，
+     * 并返回一个空节点
+     * 被监控的data不能被用作vnode渲染的数据的原因是：data在vnode渲染过程中可能会被改变，
+     * 这样会触发监控，
+     * 导致不符合预期的操作
+     * */
     if (isDef(data) && isDef((data).__ob__)) {
       warn(
         "Avoid using observed data object as vnode data: " + (JSON.stringify(data)) + "\n" +
         'Always create fresh vnode data objects in each render!',
         context
       );
+      //创建一个空的节点
       return createEmptyVNode()
     }
     // object syntax in v-bind
+    // v-bind中的对象语法
+    //如果定义有数据并且数据中的is也定义了
     if (isDef(data) && isDef(data.is)) {
-      tag = data.is;
+      tag = data.is;//tag等于is
     }
+    //如果tag不存在
+    // 当组件的is属性被设置为一个falsy的值
+    // Vue将不会知道要把这个组件渲染成什么
+    // 所以渲染一个空节点
     if (!tag) {
       // in case of component :is set to falsy value
+      //组件的情况:设置为falsy值 创建一个空节点
       return createEmptyVNode()
     }
     // warn against non-primitive key
+    // 警告非原始键
     if (isDef(data) && isDef(data.key) && !isPrimitive(data.key)
     ) {
       {
@@ -3714,22 +3738,28 @@
       }
     }
     // support single function children as default scoped slot
-    if (Array.isArray(children) &&
-      typeof children[0] === 'function'
+    //支持作为默认作用域插槽的单函数子函数
+    if (Array.isArray(children) && //如果子节点是数组
+      typeof children[0] === 'function' //并且第一个子节点类型是函数
     ) {
       data = data || {};
-      data.scopedSlots = { default: children[0] };
+      data.scopedSlots = { default: children[0] }; //获取插槽
       children.length = 0;
     }
-    if (normalizationType === ALWAYS_NORMALIZE) {
+    if (normalizationType === ALWAYS_NORMALIZE) { // 根据normalizationType的值，选择不同的处理方法
+      //创建一个规范的子节点
       children = normalizeChildren(children);
     } else if (normalizationType === SIMPLE_NORMALIZE) {
+      //把所有子节点的数组 子孙连接在一个数组。
       children = simpleNormalizeChildren(children);
     }
     var vnode, ns;
-    if (typeof tag === 'string') {
+    if (typeof tag === 'string') { //类型是string
       var Ctor;
+      //getTagNamespace  判断 tag 是否是svg或者math 标签
+      // 获取标签名的命名空间
       ns = (context.$vnode && context.$vnode.ns) || config.getTagNamespace(tag);
+      //判断标签是不是html 原有的标签
       if (config.isReservedTag(tag)) {
         // platform built-in elements
         if (isDef(data) && isDef(data.nativeOn)) {
@@ -3744,39 +3774,51 @@
         );
       } else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
         // component
+        //Ctor是VueComponent 组件构造函数
+        //创建一个组件  调用6000多行的那个createComponent
         vnode = createComponent(Ctor, data, context, children, tag);
       } else {
         // unknown or unlisted namespaced elements
         // check at runtime because it may get assigned a namespace when its
         // parent normalizes children
+        //创建标准的vue vnode // 兜底方案，正常创建一个vnode
         vnode = new VNode(
           tag, data, children,
           undefined, undefined, context
         );
       }
     } else {
-      // direct component options / constructor
+      // 当tag不是字符串的时候，我们认为tag是组件的构造类 // 所以直接创建
+      // direct component options / constructor  直接组件选项/构造函数     //创建组件
       vnode = createComponent(tag, data, context, children);
     }
-    if (Array.isArray(vnode)) {
+    if (Array.isArray(vnode)) { //如果vnode 是数组
       return vnode
-    } else if (isDef(vnode)) {
-      if (isDef(ns)) { applyNS(vnode, ns); }
-      if (isDef(data)) { registerDeepBindings(data); }
+    } else if (isDef(vnode)) { //如果vnode 有定义
+      if (isDef(ns)) {  //如果ns 有定义 标签名
+        // 如果有namespace，就应用下namespace，然后返回vnode
+        // 检测 vnode中的tag === 'foreignObject' 是否相等。并且修改ns值与force 标志
+        applyNS(vnode, ns);
+      }
+      if (isDef(data)) {
+        //注册深绑定
+        registerDeepBindings(data);
+      }
       return vnode
     } else {
+      // 否则，返回一个空节点
       return createEmptyVNode()
     }
   }
-
+  //检测 vnode中的tag === 'foreignObject' 是否相等。并且修改ns值与force 标志
   function applyNS (vnode, ns, force) {
     vnode.ns = ns;
-    if (vnode.tag === 'foreignObject') {
-      // use default namespace inside foreignObject
+    if (vnode.tag === 'foreignObject') { //svg标签
+      // use default namespace inside foreignObject //使用foreignObject中的默认名称空间
       ns = undefined;
       force = true;
     }
-    if (isDef(vnode.children)) {
+    if (isDef(vnode.children)) { //虚拟dom是否后子节点 递归循环
       for (var i = 0, l = vnode.children.length; i < l; i++) {
         var child = vnode.children[i];
         if (isDef(child.tag) && (
@@ -3792,26 +3834,33 @@
   // :class are used on slot nodes
   function registerDeepBindings (data) {
     if (isObject(data.style)) {
+      //为 seenObjects 深度收集val 中的key
       traverse(data.style);
     }
     if (isObject(data.class)) {
+      //为 seenObjects 深度收集val 中的key
       traverse(data.class);
     }
   }
 
-  /*  */
+  /* 初始化渲染 */
 
   function initRender (vm) {
-    vm._vnode = null; // the root of the child tree
-    vm._staticTrees = null; // v-once cached trees
-    var options = vm.$options;
-    var parentVnode = vm.$vnode = options._parentVnode; // the placeholder node in parent tree
-    var renderContext = parentVnode && parentVnode.context;
+    vm._vnode = null; // the root of the child tree 上一个 vonde
+    vm._staticTrees = null; // v-once cached trees  v-once缓存的树
+    var options = vm.$options; //获取参数
+    var parentVnode = vm.$vnode = options._parentVnode; // the placeholder node in parent tree  父树中的占位符节点
+    var renderContext = parentVnode && parentVnode.context; // this 上下文
+    // 判断children 有没有分发式插槽 并且过滤掉空的插槽,并且收集插槽
     vm.$slots = resolveSlots(options._renderChildren, renderContext);
     vm.$scopedSlots = emptyObject;
     // bind the createElement fn to this instance
     // so that we get proper render context inside it.
+    //将createElement fn绑定到这个实例
+    //这样我们就得到了合适的渲染上下文。
     // args order: tag, data, children, normalizationType, alwaysNormalize
+    //内部版本由模板编译的呈现函数使用
+    //创建虚拟dom的数据结构
     // internal version is used by render functions compiled from templates
     vm._c = function (a, b, c, d) { return createElement(vm, a, b, c, d, false); };
     // normalization is always applied for the public version, used in
@@ -3824,6 +3873,7 @@
 
     /* istanbul ignore else */
     {
+      // 通过defineProperty的set方法去通知notify()订阅者subscribers有新的值修改
       defineReactive$$1(vm, '$attrs', parentData && parentData.attrs || emptyObject, function () {
         !isUpdatingChildComponent && warn("$attrs is readonly.", vm);
       }, true);
@@ -3836,20 +3886,25 @@
   var currentRenderingInstance = null;
 
   function renderMixin (Vue) {
-    // install runtime convenience helpers
+    // install runtime convenience helpers 安装运行时方便助手
+    // 安装渲染助手
     installRenderHelpers(Vue.prototype);
 
     Vue.prototype.$nextTick = function (fn) {
+      //为callbacks 收集队列cb 函数 并且根据 pending 状态是否要触发callbacks 队列函数
       return nextTick(fn, this)
     };
-
+    //渲染函数
     Vue.prototype._render = function () {
       var vm = this;
+      //获取vm参数
       var ref = vm.$options;
+      // render 是  虚拟dom，需要执行的编译函数 类似于这样的函数
       var render = ref.render;
       var _parentVnode = ref._parentVnode;
 
-      if (_parentVnode) {
+      if (_parentVnode) {  //判断是否有parentVnode
+        // data.scopedSlots = {default: children[0]};  //获取插槽
         vm.$scopedSlots = normalizeScopedSlots(
           _parentVnode.data.scopedSlots,
           vm.$slots,
@@ -3858,7 +3913,11 @@
       }
 
       // set parent vnode. this allows render functions to have access
+      //设置父vnode。这允许呈现函数具有访问权限
       // to the data on the placeholder node.
+      //到占位符节点上的数据。
+
+      //把父层的Vnode 赋值的到$vnode
       vm.$vnode = _parentVnode;
       // render self
       var vnode;
@@ -3867,11 +3926,14 @@
         // separately from one another. Nested component's render fns are called
         // when parent component is patched.
         currentRenderingInstance = vm;
+        //创建一个空的组件
         vnode = render.call(vm._renderProxy, vm.$createElement);
-      } catch (e) {
+      } catch (e) { //收集错误信息 并抛出
         handleError(e, vm, "render");
         // return error render result,
         // or previous vnode to prevent render error causing blank component
+        //返回错误渲染结果，
+        //或以前的vnode，以防止渲染错误导致空白组件
         /* istanbul ignore else */
         if (vm.$options.renderError) {
           try {
@@ -3890,7 +3952,7 @@
       if (Array.isArray(vnode) && vnode.length === 1) {
         vnode = vnode[0];
       }
-      // return empty vnode in case the render function errored out
+      // return empty vnode in case the render function errored out 如果呈现函数出错，返回空的vnode
       if (!(vnode instanceof VNode)) {
         if (Array.isArray(vnode)) {
           warn(
@@ -3907,41 +3969,50 @@
     };
   }
 
-  /*  */
+  /* 判断是否是对象 如果是则合并起来 */
 
   function ensureCtor (comp, base) {
+    // https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Symbol/toStringTag
     if (
-      comp.__esModule ||
-      (hasSymbol && comp[Symbol.toStringTag] === 'Module')
+      comp.__esModule || //如果 comp.__esModule 存在
+      (hasSymbol && comp[Symbol.toStringTag] === 'Module')  //或者 支持hasSymbol 类型 并且判断 对象类的标签属性是Module "[object Module]"
     ) {
-      comp = comp.default;
+      comp = comp.default; //将 comp 默认属性给 comp
     }
+    //如果comp 是对象 则合并 base，否则返回comp
     return isObject(comp)
       ? base.extend(comp)
       : comp
   }
 
+  /** 创建简单的占位符 创建一个节点 */
+  //解决异步组件
   function createAsyncPlaceholder (
-    factory,
-    data,
-    context,
-    children,
-    tag
+    factory,//工厂
+    data, //数据
+    context,//语境
+    children, //子节点
+    tag//标签
   ) {
+    //创建一个空节点
     var node = createEmptyVNode();
+    /*异步工厂*/
     node.asyncFactory = factory;
     node.asyncMeta = { data: data, context: context, children: children, tag: tag };
     return node
   }
 
+  // 解析异步组件 更新数据
   function resolveAsyncComponent (
-    factory,
-    baseCtor
+    factory,  //函数工厂
+    baseCtor //构造函数或者vue
   ) {
+    //如果  有错误     则返回错误信息
     if (isTrue(factory.error) && isDef(factory.errorComp)) {
       return factory.errorComp
     }
 
+    //成功状态
     if (isDef(factory.resolved)) {
       return factory.resolved
     }
@@ -3981,19 +4052,22 @@
           }
         }
       };
-
-      var resolve = once(function (res) {
+      //成功 状态渲染
+      var resolve = once(function (res) {//确保只是渲染一次
         // cache resolved
         factory.resolved = ensureCtor(res, baseCtor);
         // invoke callbacks only if this is not a synchronous resolve
         // (async resolves are shimmed as synchronous during SSR)
+        //只有在这不是同步解析时才调用回调
+        //(异步解析在SSR期间以同步的方式进行调整)
         if (!sync) {
+          //渲染组件更新数据
           forceRender(true);
         } else {
           owners.length = 0;
         }
       });
-
+      //失败状态
       var reject = once(function (reason) {
         warn(
           "Failed to resolve async component: " + (String(factory)) +
@@ -4001,45 +4075,49 @@
         );
         if (isDef(factory.errorComp)) {
           factory.error = true;
+          //渲染组件更新数据
           forceRender(true);
         }
       });
 
       var res = factory(resolve, reject);
 
-      if (isObject(res)) {
+      if (isObject(res)) { //如果是对象 表明支持promise
         if (isPromise(res)) {
           // () => Promise
-          if (isUndef(factory.resolved)) {
-            res.then(resolve, reject);
+          if (isUndef(factory.resolved)) { //没有定义 resolved 成功
+            res.then(resolve, reject); //执行 then
           }
-        } else if (isPromise(res.component)) {
-          res.component.then(resolve, reject);
+        } else if (isPromise(res.component)) { //如果组件有定义并且有值
+          res.component.then(resolve, reject); //执行组件的异步
 
-          if (isDef(res.error)) {
+          if (isDef(res.error)) { //如果有错误则 把错误合并
             factory.errorComp = ensureCtor(res.error, baseCtor);
           }
 
-          if (isDef(res.loading)) {
+          if (isDef(res.loading)) { //如果组件在加载
+            //则合并组件加载时候baseCtor合并
             factory.loadingComp = ensureCtor(res.loading, baseCtor);
             if (res.delay === 0) {
+              //delay 在加载等待
               factory.loading = true;
             } else {
               timerLoading = setTimeout(function () {
                 timerLoading = null;
                 if (isUndef(factory.resolved) && isUndef(factory.error)) {
                   factory.loading = true;
+                  //渲染组件更新数据
                   forceRender(false);
                 }
               }, res.delay || 200);
             }
           }
 
-          if (isDef(res.timeout)) {
+          if (isDef(res.timeout)) {  //如果有定义一般渲染时间
             timerTimeout = setTimeout(function () {
               timerTimeout = null;
-              if (isUndef(factory.resolved)) {
-                reject(
+              if (isUndef(factory.resolved)) { //没有执行成功
+                reject( // 则执行失败
                   "timeout (" + (res.timeout) + "ms)"
                 );
               }
@@ -4049,7 +4127,7 @@
       }
 
       sync = false;
-      // return in case resolved synchronously
+      // return in case resolved synchronously 在同步解析的情况下返回
       return factory.loading
         ? factory.loadingComp
         : factory.resolved
