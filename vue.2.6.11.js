@@ -4134,18 +4134,19 @@
     }
   }
 
-  /*  */
+  /* 判断是否是异步的 */
 
   function isAsyncPlaceholder (node) {
     return node.isComment && node.asyncFactory
   }
 
-  /*  */
+  /* 获取第一个子组件并且子组件有options参数，并且是异步组件的 */
 
   function getFirstComponentChild (children) {
-    if (Array.isArray(children)) {
+    if (Array.isArray(children)) { //如果组件是个数组
       for (var i = 0; i < children.length; i++) {
         var c = children[i];
+        //如果子组件存在，并且子组件有options参数，不是空组件的，并且是异步组件的
         if (isDef(c) && (isDef(c.componentOptions) || isAsyncPlaceholder(c))) {
           return c
         }
@@ -4155,28 +4156,33 @@
 
   /*  */
 
-  /*  */
+  /* 初始化事件 */
 
   function initEvents (vm) {
     vm._events = Object.create(null);
     vm._hasHookEvent = false;
     // init parent attached events
+    // init parent attached events  初始化 父亲事件
     var listeners = vm.$options._parentListeners;
     if (listeners) {
+      //更新组件事件
       updateComponentListeners(vm, listeners);
     }
   }
 
   var target;
-
+  /**
+   *  添加事件
+    * event 添加事件名称
+    * fn 函数
+   */
   function add (event, fn) {
     target.$on(event, fn);
   }
-
+  //解绑事件
   function remove$1 (event, fn) {
     target.$off(event, fn);
   }
-
   function createOnceHandler (event, fn) {
     var _target = target;
     return function onceHandler () {
@@ -4186,26 +4192,31 @@
       }
     }
   }
-
+  //更新组件事件
   function updateComponentListeners (
-    vm,
-    listeners,
-    oldListeners
+    vm,//虚拟dom
+    listeners,//新的数据队列
+    oldListeners//旧的事件数据队列
   ) {
     target = vm;
+    //更新数据源 并且为新的值 添加函数 旧的值删除函数等功能
     updateListeners(listeners, oldListeners || {}, add, remove$1, createOnceHandler, vm);
     target = undefined;
   }
 
+  // 初始化事件绑定方法
   function eventsMixin (Vue) {
-    var hookRE = /^hook:/;
+    var hookRE = /^hook:/; //开头是^hook: 的字符串
+    // 添加绑定事件
     Vue.prototype.$on = function (event, fn) {
       var vm = this;
+      //如果事件是数组
       if (Array.isArray(event)) {
         for (var i = 0, l = event.length; i < l; i++) {
           vm.$on(event[i], fn);
         }
       } else {
+        //把所有事件拆分存放到_events 数组中
         (vm._events[event] || (vm._events[event] = [])).push(fn);
         // optimize hook:event cost by using a boolean flag marked at registration
         // instead of a hash lookup
@@ -4216,6 +4227,7 @@
       return vm
     };
 
+    // 添加事件
     Vue.prototype.$once = function (event, fn) {
       var vm = this;
       function on () {
@@ -4227,6 +4239,7 @@
       return vm
     };
 
+    // vue把事件添加到一个数组队列里面，通过删除该数组事件队列，而达到解绑事件
     Vue.prototype.$off = function (event, fn) {
       var vm = this;
       // all
@@ -4262,12 +4275,12 @@
       }
       return vm
     };
-
+    //触发事件
     Vue.prototype.$emit = function (event) {
       var vm = this;
       {
-        var lowerCaseEvent = event.toLowerCase();
-        if (lowerCaseEvent !== event && vm._events[lowerCaseEvent]) {
+        var lowerCaseEvent = event.toLowerCase();//转成小写
+        if (lowerCaseEvent !== event && vm._events[lowerCaseEvent]) {//然后根据组件追踪发出一个警告
           tip(
             "Event \"" + lowerCaseEvent + "\" is emitted in component " +
             (formatComponentName(vm)) + " but the handler is registered for \"" + event + "\". " +
@@ -4277,11 +4290,15 @@
           );
         }
       }
+      //获取事件值
       var cbs = vm._events[event];
       if (cbs) {
+        //如果长度大于1 将它变成一个真正的数组
         cbs = cbs.length > 1 ? toArray(cbs) : cbs;
+        //将参数变成一个真正数组
         var args = toArray(arguments, 1);
         var info = "event handler for \"" + event + "\"";
+        //循环事件
         for (var i = 0, l = cbs.length; i < l; i++) {
           invokeWithErrorHandling(cbs[i], vm, args, vm, info);
         }
@@ -4303,12 +4320,15 @@
     }
   }
 
+  //初始化生命周期
   function initLifecycle (vm) {
     var options = vm.$options;
 
     // locate first non-abstract parent
+    //定位第一个非抽象父节点
     var parent = options.parent;
     if (parent && !options.abstract) {
+      //判断parent父亲节点是否存在，并且判断抽象节点是否存在
       while (parent.$options.abstract && parent.$parent) {
         parent = parent.$parent;
       }
@@ -4321,28 +4341,32 @@
     vm.$children = [];
     vm.$refs = {};
 
-    vm._watcher = null;
-    vm._inactive = null;
-    vm._directInactive = false;
-    vm._isMounted = false;
-    vm._isDestroyed = false;
-    vm._isBeingDestroyed = false;
+    vm._watcher = null;//观察者
+    vm._inactive = null; //禁用的组件状态标志
+    vm._directInactive = false; // 不活跃 禁用的组件标志
+    vm._isMounted = false;//标志是否 触发过 钩子Mounted
+    vm._isDestroyed = false;//是否已经销毁的组件标志
+    vm._isBeingDestroyed = false;//是否已经销毁的组件标志 如果为true 则不触发 beforeDestroy 钩子函数 和destroyed 钩子函数
   }
-
-  function lifecycleMixin (Vue) {
+  //初始化vue 更新 销毁 函数
+  function lifecycleMixin (Vue) {.
+    //更新数据函数
     Vue.prototype._update = function (vnode, hydrating) {
       var vm = this;
+      //获取 vue 的el节点
       var prevEl = vm.$el;
+      //vue 的标准 vnode
       var prevVnode = vm._vnode;
       var restoreActiveInstance = setActiveInstance(vm);
-      vm._vnode = vnode;
+      vm._vnode = vnode;//标志上一个 vonde
       // Vue.prototype.__patch__ is injected in entry points
       // based on the rendering backend used.
-      if (!prevVnode) {
+      if (!prevVnode) {  //如果这个prevVnode不存在表示上一次没有创建过vnode，这个组件或者new Vue 是第一次进来
         // initial render
         vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */);
-      } else {
+      } else { //如果这个prevVnode存在，表示vno的已经创建过，只是更新数据而已
         // updates
+        // updates 更新  上一个旧的节点prevVnode 更新虚拟dom
         vm.$el = vm.__patch__(prevVnode, vnode);
       }
       restoreActiveInstance();
@@ -4361,21 +4385,26 @@
       // updated in a parent's updated hook.
     };
 
+    //更新数据 观察者数据
     Vue.prototype.$forceUpdate = function () {
       var vm = this;
+      //如果_watcher 观察者在就更新数据
       if (vm._watcher) {
-        vm._watcher.update();
+        vm._watcher.update();//更新观察者数据
       }
     };
-
+    //销毁组建周期函数
     Vue.prototype.$destroy = function () {
       var vm = this;
+      //如果是已经销毁过则不会再执行
       if (vm._isBeingDestroyed) {
         return
       }
+      //触发生命周期beforeDestroy 钩子函数
       callHook(vm, 'beforeDestroy');
       vm._isBeingDestroyed = true;
       // remove self from parent
+      //从父节点移除self
       var parent = vm.$parent;
       if (parent && !parent._isBeingDestroyed && !vm.$options.abstract) {
         remove(parent.$children, vm);
@@ -4384,20 +4413,27 @@
       if (vm._watcher) {
         vm._watcher.teardown();
       }
+      //获取观察者的长度
       var i = vm._watchers.length;
+      //把观察者添加到队列里面 当前Watcher添加到vue实例上
       while (i--) {
         vm._watchers[i].teardown();
       }
       // remove reference from data ob
+      //从数据ob中删除引用
       // frozen object may not have observer.
+      //被冻结的对象可能没有观察者。
       if (vm._data.__ob__) {
         vm._data.__ob__.vmCount--;
       }
       // call the last hook...
+      //调用最后一个钩子…
       vm._isDestroyed = true;
       // invoke destroy hooks on current rendered tree
+      //调用当前渲染树上的销毁钩子
       vm.__patch__(vm._vnode, null);
       // fire destroyed hook
+      // 销毁组件
       callHook(vm, 'destroyed');
       // turn off all instance listeners.
       vm.$off();
@@ -4411,14 +4447,16 @@
       }
     };
   }
-
+  //安装组件
   function mountComponent (
     vm,
     el,
     hydrating
   ) {
     vm.$el = el;
-    if (!vm.$options.render) {
+    //如果参数中没有渲染
+    if (!vm.$options.render) {  //实例化vm的渲染函数，虚拟dom调用参数的渲染函数
+      //创建一个空的组件
       vm.$options.render = createEmptyVNode;
       {
         /* istanbul ignore if */
@@ -4438,8 +4476,9 @@
         }
       }
     }
+    //执行生命周期函数 beforeMount
     callHook(vm, 'beforeMount');
-
+    //更新组件
     var updateComponent;
     /* istanbul ignore if */
     if (config.performance && mark) {
@@ -4468,6 +4507,10 @@
     // we set this to vm._watcher inside the watcher's constructor
     // since the watcher's initial patch may call $forceUpdate (e.g. inside child
     // component's mounted hook), which relies on vm._watcher being already defined
+    //我们将其设置为vm。在观察者的构造函数中
+    //因为观察者的初始补丁可能调用$forceUpdate(例如inside child)
+    //组件的挂载钩子)，它依赖于vm。_watcher已经定义
+    //创建观察者
     new Watcher(vm, updateComponent, noop, {
       before: function before () {
         if (vm._isMounted && !vm._isDestroyed) {
